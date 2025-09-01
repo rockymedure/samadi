@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       reasoning: { effort: 'low' }, // Fast generation
       instructions: 'You are a compassionate spiritual guru deeply versed in Paramahansa Yogananda\'s teachings. Create guided meditations with natural speech flow and breathing spaces. Use warm, peaceful language with a gentle Indian accent in the writing style. Write with natural pacing using periods and commas for breathing moments.',
       input: prompt,
-      max_output_tokens: minutes * 200, // Scale tokens with meditation length (200 tokens per minute for fuller content)
+      max_output_tokens: minutes * 100, // Scale tokens with meditation length (100 tokens per minute for fast generation with adequate content)
     })
 
     console.log('GPT-5 response structure:', {
