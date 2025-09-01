@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       reasoning: { effort: 'low' }, // Fast generation
       instructions: 'You are a compassionate spiritual guru deeply versed in Paramahansa Yogananda\'s teachings. Create guided meditations with natural speech flow and breathing spaces. Use warm, peaceful language with a gentle Indian accent in the writing style. Write with natural pacing using periods and commas for breathing moments.',
       input: prompt,
-      max_output_tokens: minutes * 80, // Scale tokens with meditation length (80 tokens per minute)
+      max_output_tokens: minutes * 200, // Scale tokens with meditation length (200 tokens per minute for fuller content)
     })
 
     console.log('GPT-5 response structure:', {
@@ -119,12 +119,12 @@ export async function POST(request: NextRequest) {
     
     const audioStream = await elevenlabs.textToSpeech.stream(voiceId, {
       text: script,
-      modelId: 'eleven_v3', // Using latest V3 model for better expressiveness and SSML support
+      modelId: 'eleven_v3', // Using latest V3 model for better expressiveness
       outputFormat: 'mp3_44100_128',
       voiceSettings: {
         stability: 0.5, // Natural setting for V3 (must be 0.0, 0.5, or 1.0)
         similarityBoost: 0.8,
-        style: 0.3, // More expressive for spiritual content
+        style: 0.0, // Reduced style for V3 compatibility
         useSpeakerBoost: true,
         speed: 0.85, // Slightly slower for meditative pace
       },
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          for await (const chunk of audioStream) {
+          for await (const chunk of audioStream as unknown as AsyncIterable<Uint8Array>) {
             controller.enqueue(chunk)
           }
           controller.close()

@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { theme } = body
     
-    if (!theme || !IMAGE_PROMPTS[theme]) {
+    if (!theme || !IMAGE_PROMPTS[theme as keyof typeof IMAGE_PROMPTS]) {
       return NextResponse.json(
         { error: 'Invalid or missing theme parameter' },
         { status: 400 }
@@ -36,12 +36,12 @@ export async function POST(request: Request) {
     
     const response = await openai.images.generate({
       model: 'gpt-image-1',
-      prompt: IMAGE_PROMPTS[theme],
+      prompt: IMAGE_PROMPTS[theme as keyof typeof IMAGE_PROMPTS],
       n: 1,
       size: '1024x1024',
     })
     
-    const imageUrl = response.data[0]?.url
+    const imageUrl = response.data?.[0]?.url
     if (!imageUrl) {
       throw new Error('No image URL returned from API')
     }
