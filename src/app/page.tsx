@@ -35,6 +35,60 @@ You are a compassionate spiritual guru deeply versed in Paramahansa Yogananda's 
 
 Remember: You ARE their spiritual guide, present with them in this sacred moment of seeking.`
 
+// Guru Gallery Data - OpenAI Realtime Voices Only
+const GURU_PROFILES = {
+  'sage': {
+    name: 'Master Ananda',
+    tradition: 'Yogananda Lineage',
+    description: 'A gentle soul with deep wisdom from years of meditation practice. Master Ananda speaks with the peaceful authority of one who has walked the spiritual path with devotion.',
+    specialties: ['Inner peace', 'Meditation guidance', 'Kriya Yoga'],
+    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
+    voiceId: 'sage',
+    accent: 'Gentle and wise',
+    energy: 'Calm and centered'
+  },
+  'alloy': {
+    name: 'Sister Compassion',
+    tradition: 'Universal Love',
+    description: 'A warm heart that embraces all beings with unconditional love. Sister Compassion offers healing guidance for the wounded soul seeking divine grace.',
+    specialties: ['Heart healing', 'Emotional healing', 'Divine love'],
+    image: 'https://images.unsplash.com/photo-1494790108755-2616c36fb937?w=400&h=400&fit=crop&crop=face',
+    voiceId: 'alloy',
+    accent: 'Soft and nurturing',
+    energy: 'Nurturing and loving'
+  },
+  'echo': {
+    name: 'Guru Strength',
+    tradition: 'Warrior Sage',
+    description: 'A powerful teacher who helps souls discover their inner warrior. Guru Strength guides seekers through challenges with unwavering faith and divine courage.',
+    specialties: ['Inner strength', 'Overcoming obstacles', 'Spiritual courage'],
+    image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
+    voiceId: 'echo',
+    accent: 'Strong and confident',
+    energy: 'Confident and empowering'
+  },
+  'shimmer': {
+    name: 'Devi Joy',
+    tradition: 'Bliss Consciousness', 
+    description: 'A radiant being whose very presence brings lightness and divine joy. Devi Joy reminds us that bliss is our true nature and spiritual path can be filled with celebration.',
+    specialties: ['Divine joy', 'Gratitude practice', 'Celebration of life'],
+    image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face',
+    voiceId: 'shimmer',
+    accent: 'Light and musical',
+    energy: 'Joyful and uplifting'
+  },
+  'nova': {
+    name: 'Brother Wisdom',
+    tradition: 'Ancient Knowledge',
+    description: 'A scholar-sage who bridges ancient wisdom with modern understanding. Brother Wisdom illuminates the deepest spiritual truths with clarity and profound insight.',
+    specialties: ['Spiritual philosophy', 'Ancient wisdom', 'Deep teachings'],
+    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face',
+    voiceId: 'nova',
+    accent: 'Refined and thoughtful',
+    energy: 'Wise and contemplative'
+  }
+}
+
 // Helper functions for meditation detail view
 const getMeditationImage = (type: string) => {
   const images = {
@@ -151,12 +205,15 @@ const getMeditationBenefits = (type: string) => {
 }
 
 export default function Home() {
-  const [mode, setMode] = useState<'chat' | 'meditate'>('chat')
+  const [mode, setMode] = useState<'chat' | 'meditate' | 'settings'>('chat')
   const [isConnected, setIsConnected] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [isGuru, setIsGuru] = useState(false)
   const [lastTranscript, setLastTranscript] = useState('')
   const [conversation, setConversation] = useState<Array<{role: 'user' | 'guru', message: string}>>([])
+  
+  // Settings state
+  const [selectedGuru, setSelectedGuru] = useState<string>('sage')
   
   // Meditation state
   const [selectedMeditation, setSelectedMeditation] = useState<string | null>(null)
@@ -168,10 +225,18 @@ export default function Home() {
   const sessionRef = useRef<RealtimeSession | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
+  // Note: OpenAI Realtime voices can only be heard during actual conversations
+  // We'll show a sample message instead of audio preview
+  const handleVoiceInfo = useCallback((guruId: string) => {
+    const guru = GURU_PROFILES[guruId as keyof typeof GURU_PROFILES]
+    alert(`${guru.name} speaks with a ${guru.accent.toLowerCase()} voice, bringing ${guru.energy.toLowerCase()} energy to your spiritual conversations. You'll hear their unique voice when you begin a conversation.`)
+  }, [])
+
   const handleConnect = useCallback(async () => {
     try {
+      const selectedGuruProfile = GURU_PROFILES[selectedGuru as keyof typeof GURU_PROFILES]
       const agent = new RealtimeAgent({
-        name: "Spiritual Guru",
+        name: selectedGuruProfile.name,
         instructions: GURU_INSTRUCTIONS,
       })
 
@@ -187,7 +252,7 @@ export default function Home() {
               }
             },
             output: {
-              voice: 'sage'
+              voice: selectedGuruProfile.voiceId as 'sage' | 'alloy' | 'echo' | 'shimmer' | 'nova'
             }
           }
         }
@@ -250,7 +315,7 @@ export default function Home() {
       console.error('Connection failed:', error)
       setIsConnected(false)
     }
-  }, [])
+  }, [selectedGuru])
 
   const handleDisconnect = useCallback(() => {
     if (sessionRef.current) {
@@ -398,6 +463,16 @@ export default function Home() {
               }`}
             >
               practice
+            </button>
+            <button
+              onClick={() => setMode('settings')}
+              className={`px-8 py-3 rounded-full text-sm font-light transition-all duration-200 ${
+                mode === 'settings' 
+                  ? 'bg-slate-800 text-white shadow-sm' 
+                  : 'text-slate-600 hover:text-slate-800'
+              }`}
+            >
+              guide
             </button>
           </div>
         </div>
@@ -890,6 +965,126 @@ export default function Home() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Guru Gallery - Settings Mode */}
+        {mode === 'settings' && (
+          <div className="space-y-8">
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-extralight text-slate-800 tracking-wide">choose your conversation guide</h2>
+              <p className="text-slate-600 font-light max-w-2xl mx-auto">
+                Select your spiritual companion for realtime voice conversations. Each guide brings their unique wisdom, energy, and voice to your chat experience.
+              </p>
+            </div>
+
+            {/* Guru Gallery Grid */}
+            <div className="grid gap-8 max-w-4xl mx-auto">
+              {Object.entries(GURU_PROFILES).map(([key, guru]) => (
+                <div
+                  key={key}
+                  className={`bg-white/70 backdrop-blur-sm rounded-2xl p-8 border-2 transition-all duration-300 cursor-pointer hover:shadow-lg hover:scale-[1.02] ${
+                    selectedGuru === key 
+                      ? 'border-slate-400 shadow-md scale-[1.01]' 
+                      : 'border-white/50 hover:border-slate-300'
+                  }`}
+                  onClick={() => setSelectedGuru(key)}
+                >
+                  <div className="flex items-start space-x-6">
+                    {/* Guru Image */}
+                    <div className="flex-shrink-0">
+                      <img
+                        src={guru.image}
+                        alt={guru.name}
+                        className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
+                      />
+                    </div>
+
+                    {/* Guru Details */}
+                    <div className="flex-grow space-y-4">
+                      <div>
+                        <h3 className="text-xl font-medium text-slate-800">{guru.name}</h3>
+                        <p className="text-slate-500 text-sm font-light">{guru.tradition}</p>
+                      </div>
+                      
+                      <p className="text-slate-700 font-light leading-relaxed text-sm">
+                        {guru.description}
+                      </p>
+                      
+                      {/* Specialties */}
+                      <div className="flex flex-wrap gap-2">
+                        {guru.specialties.map((specialty) => (
+                          <span
+                            key={specialty}
+                            className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-light"
+                          >
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Voice Characteristics */}
+                      <div className="text-xs text-slate-500 space-x-4 font-light">
+                        <span>🗣️ {guru.accent}</span>
+                        <span>✨ {guru.energy}</span>
+                      </div>
+                    </div>
+
+                    {/* Voice Info & Selection */}
+                    <div className="flex-shrink-0 space-y-3">
+                      {/* Voice Info Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleVoiceInfo(key)
+                        }}
+                        title="Learn about this voice"
+                        className="w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 bg-slate-200 hover:bg-slate-300 text-slate-600"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+
+                      {/* Selection Indicator */}
+                      <div className={`w-6 h-6 mx-auto rounded-full border-2 transition-all duration-200 ${
+                        selectedGuru === key
+                          ? 'border-slate-600 bg-slate-600'
+                          : 'border-slate-300'
+                      }`}>
+                        {selectedGuru === key && (
+                          <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Current Selection Display */}
+            <div className="text-center bg-white/60 backdrop-blur-sm rounded-lg p-6 border border-slate-200 max-w-md mx-auto">
+              <div className="space-y-2">
+                <h4 className="font-medium text-slate-800">Your Current Guide</h4>
+                <div className="flex items-center justify-center space-x-3">
+                  <img
+                    src={GURU_PROFILES[selectedGuru as keyof typeof GURU_PROFILES].image}
+                    alt={GURU_PROFILES[selectedGuru as keyof typeof GURU_PROFILES].name}
+                    className="w-12 h-12 rounded-full object-cover border-2 border-white"
+                  />
+                  <div>
+                    <p className="font-medium text-slate-800">
+                      {GURU_PROFILES[selectedGuru as keyof typeof GURU_PROFILES].name}
+                    </p>
+                    <p className="text-xs text-slate-500 font-light">
+                      {GURU_PROFILES[selectedGuru as keyof typeof GURU_PROFILES].tradition}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
