@@ -89,22 +89,26 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate meditation script using Responses API with GPT-5
+    // Generate meditation script using GPT-5 Responses API (like your example)
     const prompt = MEDITATION_PROMPTS[type as keyof typeof MEDITATION_PROMPTS](minutes)
     
+    console.log('🚀 Starting GPT-5 generation...')
+    const startTime = Date.now()
+    
     const response = await openai.responses.create({
-      model: 'gpt-5',
-      reasoning: { effort: 'low' }, // Fast generation
-      instructions: 'You are a compassionate spiritual guru deeply versed in Paramahansa Yogananda\'s teachings. Create guided meditations with natural speech flow and breathing spaces. Use warm, peaceful language with a gentle Indian accent in the writing style. Write with natural pacing using periods and commas for breathing moments.',
+      model: "gpt-5-mini-2025-08-07",
+      reasoning: { effort: "low" },
+      instructions: "You are a compassionate spiritual guru deeply versed in Paramahansa Yogananda's teachings. Create guided meditations with natural speech flow and breathing spaces. Use warm, peaceful language with a gentle Indian accent in the writing style. Write with natural pacing using periods and commas for breathing moments.",
       input: prompt,
-      max_output_tokens: minutes * 100, // Scale tokens with meditation length (100 tokens per minute for fast generation with adequate content)
     })
 
-    console.log('GPT-5 response structure:', {
+    const gptTime = (Date.now() - startTime) / 1000
+
+    console.log('✅ GPT-5 response:', {
+      generation_time: `${gptTime} seconds`,
       id: response.id,
       model: response.model,
       output_text_length: response.output_text?.length || 0,
-      output_array_length: response.output?.length || 0,
       status: response.status
     })
 
@@ -114,29 +118,69 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to generate meditation script - no content returned')
     }
 
-    // Convert to speech using ElevenLabs with streaming
-    const voiceId = VOICE_MAP[type as keyof typeof VOICE_MAP] || 'pNInz6obpgDQGcFmaJgB'
-    
-    const audioStream = await elevenlabs.textToSpeech.stream(voiceId, {
-      text: script,
-      modelId: 'eleven_v3', // Using latest V3 model for better expressiveness
-      outputFormat: 'mp3_44100_128',
-      voiceSettings: {
-        stability: 0.5, // Natural setting for V3 (must be 0.0, 0.5, or 1.0)
-        similarityBoost: 0.8,
-        style: 0.0, // Reduced style for V3 compatibility
-        useSpeakerBoost: true,
-        speed: 0.85, // Slightly slower for meditative pace
-      },
-    })
+    // Split script into chunks for ElevenLabs 3000 character limit
+    const chunks = []
+    if (script.length > 2800) {
+      let remainingText = script
+      while (remainingText.length > 2800) {
+        // Find last sentence ending before 2800 chars
+        const chunk = remainingText.substring(0, 2800)
+        const lastSentence = chunk.lastIndexOf('.')
+        const splitPoint = lastSentence > 2000 ? lastSentence + 1 : 2800
+        
+        chunks.push(remainingText.substring(0, splitPoint).trim())
+        remainingText = remainingText.substring(splitPoint).trim()
+      }
+      if (remainingText.length > 0) {
+        chunks.push(remainingText)
+      }
+      console.log(`Split ${script.length} chars into ${chunks.length} chunks`)
+    } else {
+      chunks.push(script)
+    }
 
-    // Create a readable stream that pipes ElevenLabs chunks directly to client
+    const voiceId = VOICE_MAP[type as keyof typeof VOICE_MAP] || 'pNInz6obpgDQGcFmaJgB'
+
+    // Create a readable stream that processes chunks sequentially
+    const streamStartTime = Date.now()
+    let firstChunkSent = false
+    
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          for await (const chunk of audioStream as unknown as AsyncIterable<Uint8Array>) {
-            controller.enqueue(chunk)
+          for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i]
+            console.log(`🎵 Starting ElevenLabs for chunk ${i + 1}/${chunks.length} (${chunk.length} chars)`)
+            const chunkStartTime = Date.now()
+            
+            const audioStream = await elevenlabs.textToSpeech.stream(voiceId, {
+              text: chunk,
+              modelId: 'eleven_v3',
+              outputFormat: 'mp3_44100_128',
+              voiceSettings: {
+                stability: 0.5,
+                similarityBoost: 0.8,
+                style: 0.0,
+                useSpeakerBoost: true,
+                speed: 0.85,
+              },
+            })
+            
+            for await (const audioChunk of audioStream as unknown as AsyncIterable<Uint8Array>) {
+              if (!firstChunkSent) {
+                const timeToFirstChunk = (Date.now() - streamStartTime) / 1000
+                console.log(`🚀 FIRST AUDIO CHUNK: ${timeToFirstChunk} seconds from start`)
+                firstChunkSent = true
+              }
+              controller.enqueue(audioChunk)
+            }
+            
+            const chunkTime = (Date.now() - chunkStartTime) / 1000
+            console.log(`✅ Chunk ${i + 1} completed in ${chunkTime} seconds`)
           }
+          
+          const totalTime = (Date.now() - streamStartTime) / 1000
+          console.log(`🎶 All audio streaming completed in ${totalTime} seconds`)
           controller.close()
         } catch (error) {
           controller.error(error)
